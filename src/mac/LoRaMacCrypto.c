@@ -313,27 +313,6 @@ static LoRaMacCryptoStatus_t FOptsEncrypt( uint16_t size, uint32_t address, uint
 
     aBlock[0] = 0x01;
 
-    switch( fCntID )
-    {
-        case FCNT_UP:
-        {
-            aBlock[4] = 0x01;
-            break;
-        }
-        case N_FCNT_DOWN:
-        {
-            aBlock[4] = 0x01;
-            break;
-        }
-        case A_FCNT_DOWN:
-        {
-            aBlock[4] = 0x02;
-            break;
-        }
-        default:
-            return LORAMAC_CRYPTO_FAIL_PARAM;
-    }
-
     aBlock[5] = dir;
 
     aBlock[6] = address & 0xFF;
@@ -345,8 +324,6 @@ static LoRaMacCryptoStatus_t FOptsEncrypt( uint16_t size, uint32_t address, uint
     aBlock[11] = ( frameCounter >> 8 ) & 0xFF;
     aBlock[12] = ( frameCounter >> 16 ) & 0xFF;
     aBlock[13] = ( frameCounter >> 24 ) & 0xFF;
-
-    aBlock[15] = 0x01;
 
     if( size > 0 )
     {
@@ -1173,7 +1150,7 @@ LoRaMacCryptoStatus_t LoRaMacCryptoHandleJoinAccept( JoinReqIdentifier_t joinReq
 
         procBuffer[bufItr++] = macMsg->MHDR.Value;
 
-        if( SecureElementVerifyAesCmac( macMsg->Buffer,  ( macMsg->BufSize + micComputationOffset - LORAMAC_MHDR_FIELD_SIZE - LORAMAC_MIC_FIELD_SIZE ), macMsg->MIC, micComputationKeyID ) != SECURE_ELEMENT_SUCCESS )
+        if( SecureElementVerifyAesCmac( procBuffer/*macMsg->Buffer*/,  ( macMsg->BufSize + micComputationOffset - LORAMAC_MHDR_FIELD_SIZE - LORAMAC_MIC_FIELD_SIZE ), macMsg->MIC, micComputationKeyID ) != SECURE_ELEMENT_SUCCESS )
         {
             return LORAMAC_CRYPTO_ERROR_SECURE_ELEMENT_FUNC;
         }

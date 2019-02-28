@@ -46,6 +46,13 @@ uint8_t EepromWriteBuffer( uint16_t addr, uint8_t *buffer, uint16_t size );
 uint8_t EepromReadBuffer( uint16_t addr, uint8_t *buffer, uint16_t size );
 
 /*!
+ * Erase all MCU EEPROM.
+ *
+ * \retval status  [SUCCESS, FAIL]
+ */
+uint8_t EepromEraseAll( void );
+
+/*!
  * Sets the device address.
  *
  * \remark Useful for I2C external EEPROMS
