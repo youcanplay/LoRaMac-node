@@ -23,7 +23,7 @@ cmake_minimum_required(VERSION 3.6)
 #---------------------------------------------------------------------------------------
 
 # Allow switching of target platform
-set(BOARD_LIST NAMote72 NucleoL073 NucleoL152 NucleoL476 SAML21 SKiM880B SKiM980A SKiM881AXL B-L072Z-LRWAN1)
+set(BOARD_LIST NAMote72 NucleoL073 NucleoL152 NucleoL476 SAML21 SKiM880B SKiM980A DiDaNode SKiM881AXL B-L072Z-LRWAN1)
 set(BOARD NucleoL073 CACHE STRING "Default target platform is NucleoL073")
 set_property(CACHE BOARD PROPERTY STRINGS ${BOARD_LIST})
 
@@ -154,6 +154,18 @@ elseif(BOARD STREQUAL SKiM980A)
     # Configure radio
     set(RADIO sx1272 CACHE INTERNAL "Radio sx1272 selected")
 
+elseif(BOARD STREQUAL DiDaNode)
+    # Configure toolchain for DiDaNode
+	# set(LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/boards/DiDaNode/cmsis/arm-gcc/stm32l151xb_flash.ld)
+	set(LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/boards/DiDaNode/cmsis/arm-gcc/stm32l151xba_flash.ld)
+    include(stm32l1)
+
+    # Build platform specific board implementation
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/boards/DiDaNode)
+
+    # Configure radio
+    set(RADIO sx1276 CACHE INTERNAL "Radio sx1276 selected")	
+	
 elseif(BOARD STREQUAL SKiM881AXL)
     # Configure toolchain for SKiM881AXL
     set(LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/boards/SKiM881AXL/cmsis/arm-gcc/stm32l081xx_flash.ld)

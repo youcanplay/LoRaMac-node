@@ -171,3 +171,14 @@ NvmmStatus_t NvmmRead( NvmmDataBlock_t* dataB, void* dst, size_t num )
 
     return NVMM_SUCCESS;
 }
+
+NvmmStatus_t NvmmEraseAll( void )
+{
+	CRITICAL_SECTION_BEGIN( );
+
+	EepromEraseAll( );
+
+	CRITICAL_SECTION_END( );
+
+	return NVMM_SUCCESS;
+}

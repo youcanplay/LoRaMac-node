@@ -112,4 +112,9 @@ NvmmStatus_t NvmmWrite( NvmmDataBlock_t* dataB, void* src, size_t num );
  */
 NvmmStatus_t NvmmRead( NvmmDataBlock_t* dataB, void* dst, size_t num );
 
+/*!
+ * Erase all data.
+ */
+NvmmStatus_t NvmmEraseAll( void );
+
 #endif // __NVMM_H__
