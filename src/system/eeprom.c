@@ -43,6 +43,11 @@ uint8_t EepromReadBuffer( uint16_t addr, uint8_t *buffer, uint16_t size )
     return EepromMcuReadBuffer( addr, buffer, size );
 }
 
+uint8_t EepromEraseAll( void )
+{
+	return EepromMcuEraseAll( );
+}
+
 void EepromSetDeviceAddr( uint8_t addr )
 {
     EepromMcuSetDeviceAddr( addr );

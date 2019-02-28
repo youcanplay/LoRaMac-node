@@ -61,6 +61,27 @@ uint8_t EepromMcuReadBuffer( uint16_t addr, uint8_t *buffer, uint16_t size )
     return SUCCESS;
 }
 
+uint8_t EepromMcuEraseAll( void )
+{
+	uint32_t i = 0;
+
+	if( HAL_FLASHEx_DATAEEPROM_Unlock( ) == HAL_OK )
+	{
+		for( i=0; i<(FLASH_EEPROM_END - FLASH_EEPROM_BASE); )
+		{
+			if( HAL_FLASHEx_DATAEEPROM_Erase( FLASH_TYPEERASEDATA_WORD,  (FLASH_EEPROM_BASE + i) ) != HAL_OK )
+			{
+				return FAIL;
+			}
+			i += 4;
+		}
+	}
+
+	HAL_FLASHEx_DATAEEPROM_Lock(  );
+
+	return SUCCESS;
+}
+
 void EepromMcuSetDeviceAddr( uint8_t addr )
 {
     assert_param( FAIL );

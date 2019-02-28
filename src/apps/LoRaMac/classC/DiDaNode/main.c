@@ -32,6 +32,7 @@
 #include "LoRaMac.h"
 #include "Commissioning.h"
 #include "NvmCtxMgmt.h"
+#include "nvmm.h"
 
 #ifndef ACTIVE_REGION
 
@@ -978,6 +979,8 @@ int main( void )
 /*    TimerInit( &Led2Timer, OnLed2TimerEvent );
     TimerSetValue( &Led2Timer, 30*1000 );
     TimerStart( &Led2Timer );*/
+
+//    NvmmEraseAll( );
 
     while( 1 )
     {
