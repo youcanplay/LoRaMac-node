@@ -29,7 +29,7 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ),
 #include "cmac.h"
 #include "radio.h"
 
-#define NUM_OF_KEYS      22
+#define NUM_OF_KEYS      24
 #define KEY_SIZE         16
 
 /*!
@@ -53,6 +53,14 @@ typedef struct sKey
 typedef struct sSecureElementNvCtx
 {
     /*
+     * DevEUI storage
+     */
+    uint8_t DevEui[SE_EUI_SIZE];
+    /*
+     * Join EUI storage
+     */
+    uint8_t JoinEui[SE_EUI_SIZE];
+    /*
      * AES computation context variable
      */
     aes_context AesContext;
@@ -71,7 +79,7 @@ typedef struct sSecureElementNvCtx
  */
 static SecureElementNvCtx_t SeNvmCtx;
 
-static EventNvmCtxChanged SeNvmCtxChanged;
+static SecureElementNvmEvent SeNvmCtxChanged;
 
 /*
  * Local functions
@@ -157,11 +165,14 @@ static SecureElementStatus_t ComputeCmac( uint8_t *micBxBuffer, uint8_t *buffer,
  * API functions
  */
 
-SecureElementStatus_t SecureElementInit( EventNvmCtxChanged seNvmCtxChanged )
+SecureElementStatus_t SecureElementInit( SecureElementNvmEvent seNvmCtxChanged )
 {
-    // Initialize with defaults
     uint8_t itr = 0;
+    uint8_t zeroKey[16] = { 0 };
+
+    // Initialize with defaults
     SeNvmCtx.KeyList[itr++].KeyID = APP_KEY;
+    SeNvmCtx.KeyList[itr++].KeyID = GEN_APP_KEY;
     SeNvmCtx.KeyList[itr++].KeyID = NWK_KEY;
     SeNvmCtx.KeyList[itr++].KeyID = J_S_INT_KEY;
     SeNvmCtx.KeyList[itr++].KeyID = J_S_ENC_KEY;
@@ -169,6 +180,7 @@ SecureElementStatus_t SecureElementInit( EventNvmCtxChanged seNvmCtxChanged )
     SeNvmCtx.KeyList[itr++].KeyID = S_NWK_S_INT_KEY;
     SeNvmCtx.KeyList[itr++].KeyID = NWK_S_ENC_KEY;
     SeNvmCtx.KeyList[itr++].KeyID = APP_S_KEY;
+    SeNvmCtx.KeyList[itr++].KeyID = MC_ROOT_KEY;
     SeNvmCtx.KeyList[itr++].KeyID = MC_KE_KEY;
     SeNvmCtx.KeyList[itr++].KeyID = MC_KEY_0;
     SeNvmCtx.KeyList[itr++].KeyID = MC_APP_S_KEY_0;
@@ -182,7 +194,13 @@ SecureElementStatus_t SecureElementInit( EventNvmCtxChanged seNvmCtxChanged )
     SeNvmCtx.KeyList[itr++].KeyID = MC_KEY_3;
     SeNvmCtx.KeyList[itr++].KeyID = MC_APP_S_KEY_3;
     SeNvmCtx.KeyList[itr++].KeyID = MC_NWK_S_KEY_3;
-    SeNvmCtx.KeyList[itr++].KeyID = SLOT_RAND_ZERO_KEY;
+    SeNvmCtx.KeyList[itr].KeyID = SLOT_RAND_ZERO_KEY;
+
+    // Set standard keys
+    memcpy1( SeNvmCtx.KeyList[itr].KeyValue, zeroKey, KEY_SIZE );
+
+    memset1( SeNvmCtx.DevEui, 0, SE_EUI_SIZE );
+    memset1( SeNvmCtx.JoinEui, 0, SE_EUI_SIZE );
 
     // Assign callback
     if( seNvmCtxChanged != 0 )
@@ -223,22 +241,22 @@ SecureElementStatus_t SecureElementSetKey( KeyIdentifier_t keyID, uint8_t* key )
     {
         return SECURE_ELEMENT_ERROR_NPE;
     }
-    SecureElementStatus_t retval = SECURE_ELEMENT_ERROR;
 
     for( uint8_t i = 0; i < NUM_OF_KEYS; i++ )
     {
         if( SeNvmCtx.KeyList[i].KeyID == keyID )
         {
-            if( LORAMAC_CRYPTO_MULITCAST_KEYS < SeNvmCtx.KeyList[i].KeyID )
-            {  // Decrypt the key if its a Mulitcast key
-
+            if( ( keyID == MC_KEY_0 ) || ( keyID == MC_KEY_1 ) || ( keyID == MC_KEY_2 ) || ( keyID == MC_KEY_3 ) )
+            {  // Decrypt the key if its a Mckey
+                SecureElementStatus_t retval = SECURE_ELEMENT_ERROR;
                 uint8_t decryptedKey[16] = { 0 };
 
                 retval = SecureElementAesEncrypt( key, 16, MC_KE_KEY, decryptedKey );
-                if( retval != SECURE_ELEMENT_SUCCESS )
-                {
-                    return retval;
-                }
+
+                memcpy1( SeNvmCtx.KeyList[i].KeyValue, decryptedKey, KEY_SIZE );
+                SeNvmCtxChanged( );
+
+                return retval;
             }
             else
             {
@@ -254,7 +272,7 @@ SecureElementStatus_t SecureElementSetKey( KeyIdentifier_t keyID, uint8_t* key )
 
 SecureElementStatus_t SecureElementComputeAesCmac( uint8_t *micBxBuffer, uint8_t *buffer, uint16_t size, KeyIdentifier_t keyID, uint32_t* cmac )
 {
-    if( keyID >= LORAMAC_CRYPTO_MULITCAST_KEYS )
+    if( keyID >= LORAMAC_CRYPTO_MULTICAST_KEYS )
     {
         //Never accept multicast key identifier for cmac computation
         return SECURE_ELEMENT_ERROR_INVALID_KEY_ID;
@@ -339,15 +357,6 @@ SecureElementStatus_t SecureElementDeriveAndStoreKey( Version_t version, uint8_t
         }
     }
 
-    // In case of McKEKey derivation, the parameter input is concatenated: nonce | DevEUI  | pad16
-    // where nonce SHALL be greater than 15
-    uint16_t nonce = input[0];
-    nonce |= ( ( uint16_t ) input[1] << 8 );
-    if( ( targetKeyID == MC_KE_KEY ) && ( nonce < 16 ) )
-    {
-        return retval;
-    }
-
     // Derive key
     retval = SecureElementAesEncrypt( input, 16, rootKeyID, key );
     if( retval != SECURE_ELEMENT_SUCCESS )
@@ -373,4 +382,36 @@ SecureElementStatus_t SecureElementRandomNumber( uint32_t* randomNum )
     }
     *randomNum = Radio.Random( );
     return SECURE_ELEMENT_SUCCESS;
+}
+
+SecureElementStatus_t SecureElementSetDevEui( uint8_t* devEui )
+{
+    if( devEui == NULL )
+    {
+        return SECURE_ELEMENT_ERROR_NPE;
+    }
+    memcpy1( SeNvmCtx.DevEui, devEui, SE_EUI_SIZE );
+    SeNvmCtxChanged( );
+    return SECURE_ELEMENT_SUCCESS;
+}
+
+uint8_t* SecureElementGetDevEui( void )
+{
+    return SeNvmCtx.DevEui;
+}
+
+SecureElementStatus_t SecureElementSetJoinEui( uint8_t* joinEui )
+{
+    if( joinEui == NULL )
+    {
+        return SECURE_ELEMENT_ERROR_NPE;
+    }
+    memcpy1( SeNvmCtx.JoinEui, joinEui, SE_EUI_SIZE );
+    SeNvmCtxChanged( );
+    return SECURE_ELEMENT_SUCCESS;
+}
+
+uint8_t* SecureElementGetJoinEui( void )
+{
+    return SeNvmCtx.JoinEui;
 }
